@@ -4,11 +4,20 @@
 
 enum {
     OP_BR, OP_ADD, OP_LD, OP_ST, OP_JSR, OP_AND, OP_LDR, OP_STR,
-    OP_RTI, OP_NOT, OP_STI, OP_JMP, OP_RES, OP_LEA, OP_TRAP
+    OP_RTI, OP_NOT, OP_LDI, OP_STI, OP_JMP, OP_RES, OP_LEA, OP_TRAP
 };
 
 enum {
     R_R0, R_R1, R_R2, R_R3, R_R4, R_R5, R_R6, R_R7, R_PC, R_COND, R_COUNT
+};
+
+enum {
+    TRAP_GETC = 0x20,    /* Get character from keyboard */
+    TRAP_OUT = 0x21,     /* Output a character */
+    TRAP_PUTS = 0x22,    /* Output a string */
+    TRAP_IN = 0x23,      /* Input a string */
+    TRAP_PUTSP = 0x24,   /* Output a string with two character in each memory location [15:8] [7:0] */
+    TRAP_HALT = 0x25     /* Halt the program */
 };
 
 uint16_t memory[UINT16_MAX];
@@ -20,6 +29,11 @@ uint16_t sign_extend(uint16_t x, int n)
         x |= (0xFFFF << n); // signed
     }
     return x; // unsigned
+}
+
+uint16_t zero_extend(uint16_t x, int n)
+{
+    return x;
 }
 
 void update_cond(uint16_t r)
@@ -116,11 +130,11 @@ int main()
             baser = (instruction >> 6) & 0x7;
 
             registers[R_R7] = registers[R_PC];
-            if ((instruction >> 11) & 0x1)
+            if ((instruction >> 11) & 0x1) // JSRR
             {
                 registers[R_PC] = baser;
             }
-            else
+            else // JSR
             {
                 registers[R_PC] += sign_extend(offset11, 11);
             }
@@ -159,12 +173,54 @@ int main()
             memory[baser + sign_extend(offset6, 6)] = sr1;
             break;
 
+        case OP_RTI:;
+
         case OP_NOT:
             sr1 = getFirstOperand(instruction);
             dr = getDestination(instruction);
 
             registers[dr] = ~registers[sr1];
             update_cond(dr);
+            break;
+
+        case OP_LDI:
+            dr = getDestination(instruction);
+            offset9 = instruction & 0x1FF;
+
+            memory[dr] = memory[memory[registers[R_PC] + sign_extend(offset9, 9)]];
+            update_cond(dr);
+            break;
+
+        case OP_STI:
+            sr1 = getDestination(instruction);
+            offset9 = instruction & 0x1FF;
+
+            memory[memory[registers[R_PC] + sign_extend(offset9, 9)]] = sr1;
+            break;
+
+        case OP_JMP:
+            baser = (instruction >> 6) & 0x7;
+
+            registers[R_PC] = baser;
+            break;
+
+        case OP_RES:
+            // reserved, throw illegal opcode exception
+            break;
+
+        case OP_LEA:
+            dr = getDestination(instruction);
+            offset9 = instruction & 0x1FF;
+
+            memory[dr] = registers[PC] + sign_extend(offset9, 9);
+            update_cond(dr);
+            break;
+
+        case OP_TRAP:;
+            uint16_t trapvect8 = 0;
+
+            registers[R_R7] = registers[R_PC];
+            registers[R_PC] = memory[trapvect8];
             break;
 
         default:
