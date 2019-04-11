@@ -8,7 +8,6 @@ An emulator for the LC-3 programming language written in C.
 
 ## To-Do
 
-- JMP: if baser = 111 then RET PC=R7
 - Implement RTI and TRAP
 - Load binary files
 - Clean code

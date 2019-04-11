@@ -201,7 +201,14 @@ int main()
         case OP_JMP:
             baser = (instruction >> 6) & 0x7;
 
-            registers[R_PC] = baser;
+            if (baser == 0x7) // RET
+            {
+                registers[R_PC] = registers[R_R7];
+            }
+            else // JMP
+            {
+                registers[R_PC] = baser;
+            }
             break;
 
         case OP_RES:
